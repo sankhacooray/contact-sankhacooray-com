@@ -10,7 +10,8 @@
  * What it does on each submit:
  *   1. Appends the inquiry to a Google Sheet (your private inbox of leads).
  *   2. Sends the sender a branded HTML "thanks, I'll be in touch" email.
- *   3. (Optional) Emails YOU an internal alert with the message.
+ *   3. Emails YOU an internal alert with the full message, with reply-to set
+ *      to the sender so you can respond directly from your inbox.
  *
  * Wiring (one-time, after you paste this into your own Google account):
  *   1. Apps Script IDE → Run → `setup`  → authorize scopes. This creates a
@@ -21,7 +22,7 @@
  *
  * Optional Script Properties (Project Settings → Script Properties):
  *   NOTIFY_EMAIL — where to send the "new inquiry" alert (e.g. your inbox).
- *                  If unset, no internal alert is sent.
+ *                  If unset, the alert goes to OWNER_EMAIL (defined below).
  *   FROM_EMAIL   — alias to send the auto-reply FROM (e.g. hello@sankhacooray.com).
  *                  Must be a verified "Send mail as" alias in your Gmail.
  *                  If unset/unverified, falls back to your primary address.
@@ -32,6 +33,9 @@ const SHEET_NAME  = "Inquiries";
 const SHEET_TITLE = "sankhacooray.com — Contact inquiries";
 const BRAND       = "Sankha Cooray";
 const SITE        = "sankhacooray.com";
+// Default inbox for the internal "new inquiry" alert. Override with the
+// NOTIFY_EMAIL Script Property without touching code.
+const OWNER_EMAIL = "bsc2fast@gmail.com";
 const HEADERS = [
   "Timestamp", "Name", "Email", "Message", "User agent", "Source"
 ];
@@ -182,10 +186,11 @@ function sendThankYouEmail_(d) {
 }
 
 function notifyInternal_(d) {
-  const to = PropertiesService.getScriptProperties().getProperty("NOTIFY_EMAIL");
+  // Always alert the owner. NOTIFY_EMAIL (Script Property) overrides the default.
+  const to = PropertiesService.getScriptProperties().getProperty("NOTIFY_EMAIL") || OWNER_EMAIL;
   if (!to) return;
   const lines = [
-    "New contact inquiry via " + SITE,
+    "New contact inquiry via " + (d.source || SITE),
     "",
     "Name:       " + d.name,
     "Email:      " + d.email,
@@ -194,10 +199,12 @@ function notifyInternal_(d) {
     "",
     "Message:",
     d.message,
+    "",
+    "Reply to this email to respond directly to " + d.name + ".",
   ];
   sendBrandedEmail_({
     to: to,
-    subject: "[" + SITE + "] New inquiry — " + d.name,
+    subject: "[" + (d.source || SITE) + "] New inquiry from " + d.name,
     body: lines.join("\n"),
     overrideName: SITE + " contact",
     replyToOverride: d.email, // reply goes straight to the sender
