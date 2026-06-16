@@ -206,6 +206,7 @@ function notifyInternal_(d) {
     to: to,
     subject: "[" + (d.source || SITE) + "] New inquiry from " + d.name,
     body: lines.join("\n"),
+    htmlBody: renderInternalHtml_(d),
     overrideName: SITE + " contact",
     replyToOverride: d.email, // reply goes straight to the sender
   });
@@ -309,6 +310,98 @@ function renderThankYouHtml_(firstName, message) {
     '<tr><td style="padding:22px 40px;background:' + SURFACE + ';font-size:12px;line-height:1.55;color:rgba(14,19,32,0.55);">',
     'You\'re receiving this because you sent a message through <strong style="color:rgba(14,19,32,0.72);">' + SITE + '</strong>. ',
     'If that wasn\'t you, you can ignore this email.',
+    '</td></tr>',
+
+    '</table>',
+    '</td></tr></table>',
+    '</body></html>',
+  ].join('');
+}
+
+/**
+ * Branded HTML for the internal "new inquiry" alert sent to the owner.
+ * Same visual language as the auto-reply: dark header band, message quote
+ * block, plus the sender's details and a one-tap reply button.
+ */
+function renderInternalHtml_(d) {
+  const name   = escapeHtml_(d.name);
+  const email  = escapeHtml_(d.email);
+  const source = escapeHtml_(d.source || SITE);
+  const ua     = escapeHtml_(d.userAgent || "—");
+  const msg    = escapeHtml_(d.message).replace(/\n/g, "<br>");
+  let received = "";
+  try {
+    received = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "Etc/UTC", "d MMM yyyy, h:mm a");
+  } catch (e) { received = ""; }
+
+  const INK     = "#0e1320";   // dark header / strong text
+  const PRIMARY = "#5b8cff";   // accent (blue)
+  const ACCENT2 = "#34d6a5";   // accent (mint)
+  const SURFACE = "#f4f5f7";   // footer + quote band
+  const BG      = "#fafafa";   // outer page bg
+  const MUTED   = "rgba(14,19,32,0.5)";
+
+  // One label/value row in the details table.
+  const row = (label, value) =>
+    '<tr>' +
+    '<td style="padding:7px 0;font-size:13px;font-weight:600;letter-spacing:0.03em;text-transform:uppercase;color:' + MUTED + ';width:84px;vertical-align:top;">' + label + '</td>' +
+    '<td style="padding:7px 0;font-size:15px;line-height:1.5;color:' + INK + ';">' + value + '</td>' +
+    '</tr>';
+
+  const replySubject = encodeURIComponent("Re: your message via " + (d.source || SITE));
+
+  return [
+    '<!DOCTYPE html>',
+    '<html lang="en"><head>',
+    '<meta charset="UTF-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    '<title>New contact inquiry</title>',
+    '</head>',
+    '<body style="margin:0;padding:0;background:' + BG + ';font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;color:' + INK + ';-webkit-font-smoothing:antialiased;">',
+
+    // Hidden preheader (preview text in the inbox list)
+    '<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:' + BG + ';">',
+    name + ' sent a message via ' + source,
+    '</div>',
+
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + BG + ';">',
+    '<tr><td align="center" style="padding:40px 16px;">',
+
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(14,19,32,0.08);">',
+
+    // Header band
+    '<tr><td style="background:linear-gradient(135deg,' + INK + ' 0%,' + PRIMARY + ' 100%);background-color:' + INK + ';padding:32px 40px 28px;">',
+    '<div style="font-size:13px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:10px;">New inquiry</div>',
+    '<div style="font-size:25px;font-weight:700;color:#ffffff;line-height:1.15;letter-spacing:-0.01em;">' + name + '</div>',
+    '<div style="font-size:13px;color:rgba(255,255,255,0.66);margin-top:6px;">via ' + source + (received ? ' &middot; ' + received : '') + '</div>',
+    '</td></tr>',
+
+    // Sender details
+    '<tr><td style="padding:28px 40px 4px;">',
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">',
+    row("From", name),
+    row("Email", '<a href="mailto:' + email + '" style="color:' + PRIMARY + ';text-decoration:none;">' + email + '</a>'),
+    row("Source", source),
+    '</table>',
+
+    // Message
+    '<p style="margin:22px 0 10px;font-size:13px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:' + MUTED + ';">Message</p>',
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + SURFACE + ';border-left:3px solid ' + ACCENT2 + ';border-radius:8px;">',
+    '<tr><td style="padding:16px 18px;font-size:15px;line-height:1.6;color:rgba(14,19,32,0.85);">' + msg + '</td></tr>',
+    '</table>',
+
+    // Reply button
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 4px;"><tr>',
+    '<td style="border-radius:10px;background:' + PRIMARY + ';">',
+    '<a href="mailto:' + email + '?subject=' + replySubject + '" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;">Reply to ' + name + ' &rarr;</a>',
+    '</td></tr></table>',
+    '<p style="margin:10px 0 0;font-size:13px;line-height:1.5;color:' + MUTED + ';">Or just hit reply &mdash; this email\'s reply-to is already set to the sender.</p>',
+
+    '</td></tr>',
+
+    // Footer — technical context
+    '<tr><td style="padding:20px 40px;background:' + SURFACE + ';font-size:12px;line-height:1.55;color:rgba(14,19,32,0.55);">',
+    '<strong style="color:rgba(14,19,32,0.7);">User agent</strong><br>' + ua,
     '</td></tr>',
 
     '</table>',
