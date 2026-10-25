@@ -30,7 +30,7 @@ src/
    - Execute as: **Me**
    - Who has access: **Anyone**
    - Deploy → copy the **Web app URL** (ends in `/exec`).
-6. Paste that URL into the website: `v3-sankhacooray-com/js/contact.js` →
+6. Paste that URL into the shared form: `cdn-sankhacooray-com/js/sankha-contact.js` →
    `APPS_SCRIPT_URL`.
 
 ## Optional Script Properties
@@ -60,4 +60,5 @@ Version: New version → Deploy**. This keeps the same URL.
 - **Spam:** a hidden honeypot field (`company`) silently drops bot submissions.
 - **Quotas:** consumer Gmail allows ~100 emails/day, which is plenty for a
   personal contact form.
-- The frontend lives in the `v3-sankhacooray-com` repo; this repo is backend only.
+- The frontend is the shared `sankha-contact.js` in the `cdn-sankhacooray-com` repo,
+  used by every site's contact section; this repo is backend only.
